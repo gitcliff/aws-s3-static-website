@@ -70,6 +70,9 @@ resource "aws_route53_zone" "primary_zone" {
 # S3 bucket for static website hosting
 resource "aws_s3_bucket" "first_bucket" {
   bucket = var.bucket_name
+   tags = {
+    Name = var.bucket_tag
+  }
 }
 
 # Make S3 bucket private
@@ -122,7 +125,7 @@ resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
 resource "aws_s3_object" "website_files" {
   for_each = fileset("${path.module}/www", "**/*")
 
-  bucket = aws_s3_bucket.website.id
+  bucket = aws_s3_bucket.first_bucket.id
   key    = each.value
   source = "${path.module}/www/${each.value}"
   etag   = filemd5("${path.module}/www/${each.value}")
@@ -141,34 +144,95 @@ resource "aws_s3_object" "website_files" {
   }, split(".", each.value)[length(split(".", each.value)) - 1], "application/octet-stream")
 }
 
-# CloudFront Distribution
-resource "aws_cloudfront_distribution" "s3_distribution" {
-  origin {
-    domain_name              = aws_s3_bucket.website.bucket_regional_domain_name
-    origin_id                = "S3-${aws_s3_bucket.website.id}"
-    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
+
+# ==========================================
+# ACM SSL/TLS CERTIFICATE
+# ==========================================
+
+resource "aws_acm_certificate" "website_cert" {
+  domain_name       = local.domain_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
   }
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.website_cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = aws_route53_zone.primary_zone.zone_id
+
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 60
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "website_cert" {
+  certificate_arn = aws_acm_certificate.website_cert.arn
+
+  validation_record_fqdns = [
+    for record in aws_route53_record.cert_validation :
+    record.fqdn
+  ]
+}
+
+# Create Route53 records for the CloudFront distribution aliases
+resource "aws_route53_record" "cloudfront" {
+  for_each = aws_cloudfront_distribution.s3_distribution.aliases
+  zone_id  = aws_route53_zone.primary_zone.zone_id
+  name     = each.value
+  type     = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.s3_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_cloudfront_distribution" "s3_distribution" {
 
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
+  # Custom domain
+  aliases = [local.domain_name]
+
+  origin {
+    domain_name              = aws_s3_bucket.first_bucket.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.first_bucket.id}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
+  }
+
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.website.id}"
+    target_origin_id = "S3-${aws_s3_bucket.first_bucket.id}"
 
     forwarded_values {
       query_string = false
+
       cookies {
         forward = "none"
       }
     }
 
+    # Force HTTP → HTTPS
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
   }
 
   price_class = "PriceClass_100"
@@ -179,8 +243,11 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     }
   }
 
+  # HTTPS certificate
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate_validation.website_cert.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 }
 

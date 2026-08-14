@@ -15,6 +15,12 @@ variable "oac_name" {
   default     = "demo-oac"
 }
 
+variable "bucket_tag" {
+  description = "The tag for the s3 bucket"
+  type = string
+  default = "My bucket"
+}
+
 variable "oac_description" {
   description = "Description of the CloudFront Origin Access Control"
   type        = string
