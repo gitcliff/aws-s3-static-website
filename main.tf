@@ -1,8 +1,78 @@
-resource "aws_s3_bucket" "first_bucket" {
-  bucket = var.bucket_name
-  
+
+locals {
+  domain_name = "cliff.com" 
 }
 
+
+# ==========================================
+#  ROUTE 53 (Domain & Hosted Zone)
+# ==========================================
+resource "aws_route53domains_domain" "demo_domain" {
+  domain_name = local.domain_name
+  auto_renew  = false
+
+  admin_contact {
+    address_line_1    = "101 Main Street"
+    city              = "San Francisco"
+    contact_type      = "COMPANY"
+    country_code      = "US"
+    email             = "terraform-acctest@example.com"
+    fax               = "+1.4155551234"
+    first_name        = "Terraform"
+    last_name         = "Team"
+    organization_name = "HashiCorp"
+    phone_number      = "+1.4155551234"
+    state             = "CA"
+    zip_code          = "94105"
+  }
+
+  registrant_contact {
+    address_line_1    = "101 Main Street"
+    city              = "kampala"
+    contact_type      = "COMPANY"
+    country_code      = "UG"
+    email             = "gitacliff48@gmail.com"
+    fax               = "+1.4155551234"
+    first_name        = "Gita"
+    last_name         = "cliff"
+    organization_name = "HashiCorp"
+    phone_number      = "+256704567830"
+    state             = "CA"
+    zip_code          = "94105"
+  }
+
+  tech_contact {
+    address_line_1    = "101 Main Street"
+    city              = "San Francisco"
+    contact_type      = "COMPANY"
+    country_code      = "US"
+    email             = "terraform-acctest@example.com"
+    fax               = "+1.4155551234"
+    first_name        = "Terraform"
+    last_name         = "Team"
+    organization_name = "HashiCorp"
+    phone_number      = "+1.4155551234"
+    state             = "CA"
+    zip_code          = "94105"
+  }
+
+  tags = {
+    Environment = "dev"
+  }
+}
+
+resource "aws_route53_zone" "primary_zone" {
+  name = aws_route53domains_domain.demo_domain.domain_name
+  comment = "Managed by cliff"
+}
+
+
+# S3 bucket for static website hosting
+resource "aws_s3_bucket" "first_bucket" {
+  bucket = var.bucket_name
+}
+
+# Make S3 bucket private
 resource "aws_s3_bucket_public_access_block" "block" {
   bucket = aws_s3_bucket.first_bucket.id
 
@@ -12,6 +82,7 @@ resource "aws_s3_bucket_public_access_block" "block" {
   restrict_public_buckets = true
 }
 
+# Origin Access Control for CloudFront (Recommended over OAI)
 resource "aws_cloudfront_origin_access_control" "oac" {
   name                              = var.oac_name
   description                       = var.oac_description
@@ -113,21 +184,3 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   }
 }
 
-# data "aws_iam_policy_document" "allow_access_from_another_account" {
-#   statement {
-#     principals {
-#       type        = "AWS"
-#       identifiers = ["123456789012"]
-#     }
-
-#     actions = [
-#       "s3:GetObject",
-#       "s3:ListBucket",
-#     ]
-
-#     resources = [
-#       aws_s3_bucket.example.arn,
-#       "${aws_s3_bucket.example.arn}/*",
-#     ]
-#   }
-# }
