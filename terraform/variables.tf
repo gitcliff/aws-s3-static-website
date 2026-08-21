@@ -27,3 +27,15 @@ variable "oac_description" {
   default     = "static website Policy"
 }
 
+variable "lambda_execution_role" {
+  description = "Lambda Execution Role name"
+  type        = string
+  default     = "site-lambda-execution-role"
+}
+
+variable "lambda_cloudwatch_dynameDB_policy_name" {
+  description = "Lambda policy name for cloudwatch and dynamoDB"
+  type        = string
+  default     = "site-lambda-permissions-policy"
+}
+
