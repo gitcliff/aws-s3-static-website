@@ -39,7 +39,7 @@ resource "aws_iam_policy" "lambda_policy" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem"
         ]
-        Resource = aws_dynamodb_table.visitor_counter.arn
+        Resource = "aws_dynamodb_table.visitor_counter.arn"
       }
     ]
   })

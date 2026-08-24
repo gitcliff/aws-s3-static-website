@@ -9,7 +9,6 @@ resource "aws_wafv2_web_acl" "waf" {
     allow {}
   }
 
-  # Production-ready baseline: AWS Core Managed Rule Set
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
     priority = 1
