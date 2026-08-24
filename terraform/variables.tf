@@ -42,7 +42,7 @@ variable "lambda_cloudwatch_dynameDB_policy_name" {
 variable "api_gateway_name" {
   description = "Name of the API Gateway HTTP API"
   type        = string
-  default     = "cliff-backend-api"
+  default     = "serverless_lambda_gw"
 }
 
 variable "api_gateway_protocol_type" {
@@ -54,7 +54,7 @@ variable "api_gateway_protocol_type" {
 variable "api_gateway_stage_name" {
   description = "Deployment stage name for the API Gateway API"
   type        = string
-  default     = "prod"
+  default     = "serverless_lambda_stage"
 }
 
 variable "api_gateway_stage_auto_deploy" {
@@ -84,7 +84,7 @@ variable "api_gateway_route_key" {
 variable "api_gateway_lambda_permission_statement_id" {
   description = "Statement ID for the API Gateway Lambda permission"
   type        = string
-  default     = "AllowAPIGatewayInvoke"
+  default     = "AllowExecutionFromCloudWatch"
 }
 
 variable "api_gateway_lambda_permission_action" {
