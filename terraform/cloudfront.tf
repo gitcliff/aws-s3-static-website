@@ -44,7 +44,6 @@ resource "aws_cloudfront_distribution" "cdn" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  # Custom domain
   aliases = [local.domain_name]
 
   web_acl_id          = aws_wafv2_web_acl.waf.arn
@@ -69,10 +68,25 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
+  }
+
+   custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
+  }
+
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-${aws_s3_bucket.first_bucket.id}"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_policy.id
 
     forwarded_values {
       query_string = false
@@ -105,6 +119,7 @@ resource "aws_cloudfront_distribution" "cdn" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD"]
     viewer_protocol_policy = "https-only"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_policy.id
 
     forwarded_values {
       query_string = true
@@ -124,4 +139,80 @@ resource "aws_cloudfront_distribution" "cdn" {
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
+}
+
+# Custom Response Headers Policy for strict browser security enforcement
+resource "aws_cloudfront_response_headers_policy" "security_policy" {
+  name        = "cliff-advanced-security-headers-policy"
+  comment     = "Enforces strict CSP, HSTS, and CORS for the Serverless application"
+
+  # 1. HSTS Configuration: Forces browsers to interact ONLY via HTTPS
+  security_headers_config {
+    strict_transport_security {
+      override           = true
+      access_control_max_age_sec = 31536000 # 1 Year in seconds
+      include_subdomains = true
+      preload            = true
+    }
+
+    # Anti-Clickjacking
+    frame_options {
+      override     = true
+      frame_option = "DENY"
+    }
+
+    # Anti-MIME Sniffing
+    content_type_options {
+      override = true
+    }
+
+    # XSS Protection for legacy browsers
+    xss_protection {
+      override   = true
+      protection = true
+      mode_block = true
+    }
+
+    # 2. CSP Configuration: Restricts assets to self-loading and your explicit backend API domain
+    content_security_policy {
+      override = true
+      # Allow code/styles from self; allow scripts/connections strictly to your apex domain and subdomains
+      content_security_policy = "default-src 'self'; script-src 'self' 'identity'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://${local.domain_name} https://*.${local.domain_name}; frame-ancestors 'none'; object-src 'none';"
+    }
+  }
+
+  # 3. CORS Configuration: Validates and locks cross-domain scripts
+  cors_config {
+    access_control_allow_credentials = true
+    origin_override = true
+
+    access_control_allow_origins {
+      items = ["https://${local.domain_name}"] # Restricts script actions tightly to your official domain
+    }
+
+    access_control_allow_methods {
+      items = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    }
+
+    access_control_allow_headers {
+      items = ["Authorization", "Content-Type", "Origin", "X-Requested-With"]
+    }
+
+    access_control_expose_headers {
+      items = ["Content-Length"]
+    }
+
+    access_control_max_age_sec = 600
+  }
+
+  # Implementing Permissions Policy
+  custom_headers_config {
+    items {
+      header   = "Permissions-Policy"
+      override = true
+      
+      # Strict production-grade baseline string: disabling hardware feature tracking completely
+      value    = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()"
+    }
+}
 }
