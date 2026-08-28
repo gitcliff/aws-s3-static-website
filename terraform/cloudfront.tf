@@ -10,6 +10,29 @@ resource "aws_wafv2_web_acl" "waf" {
   }
 
   rule {
+    name     = "IPRateLimitRule"
+    priority = 0 # Priority 0 ensures this evaluates BEFORE standard core rule sets
+    
+    action {
+      block {} # Drop traffic immediately if the threshold is crossed
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 300 # Maximum requests allowed per IP address in a rolling 5-minute window
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "IPRateLimitRuleMetric"
+      sampled_requests_enabled   = true
+    }
+  }
+
+
+  rule {
     name     = "AWSManagedRulesCommonRuleSet"
     priority = 1
 

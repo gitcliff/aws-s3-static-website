@@ -8,6 +8,10 @@ resource "aws_apigatewayv2_stage" "prod" {
   api_id      = aws_apigatewayv2_api.http_api.id
   name        = var.api_gateway_stage_name
   auto_deploy = var.api_gateway_stage_auto_deploy
+  default_route_settings {
+    throttling_burst_limit = 50  # Allows a brief, sudden spike of up to 50 concurrent requests
+    throttling_rate_limit  = 20  # Mandates a steady speed ceiling of 20 requests per second maximum
+  }
 }
 
 # Integration with backend AWS Lambda function
