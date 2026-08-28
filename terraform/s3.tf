@@ -1,8 +1,26 @@
+terraform {
+  backend "s3" {
+    bucket         = "cliff-terraform-state-storage-bucket"
+    key            = "dev/terraform.tfstate"
+    region         = var.aws_region
+    use_lockfile  = true
+    encrypt        = true
+  }
+}
 # S3 bucket for static website hosting
 resource "aws_s3_bucket" "first_bucket" {
   bucket = var.bucket_name
    tags = {
     Name = var.bucket_tag
+  }
+}
+
+# 2. Enable versioning for the bucket
+resource "aws_s3_bucket_versioning" "bucket_versioning" {
+  bucket = aws_s3_bucket.first_bucket.id
+  
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 
