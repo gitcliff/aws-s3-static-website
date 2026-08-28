@@ -1,11 +1,16 @@
 # 🌐 Enterprise Serverless Web Application & High-Scale REST API
 
-[![AWS](https://shields.io)](https://amazon.com)
-[![Terraform](https://shields.io)](https://terraform.io)
-[![Security Rating](https://shields.io)](https://securityheaders.com)
-[![FinOps](https://shields.io)](https://amazon.compricing/)
+![AWS](https://img.shields.io/badge/AWS-Cloud-orange)
+![Terraform](https://img.shields.io/badge/IaC-Terraform-purple)
+![Python](https://img.shields.io/badge/Backend-Python-blue)
+![Lambda](https://img.shields.io/badge/Compute-AWS%20Lambda-orange)
+![DynamoDB](https://img.shields.io/badge/Database-DynamoDB-blue)
+![CloudFront](https://img.shields.io/badge/CDN-CloudFront-orange)
+![WAF](https://img.shields.io/badge/Security-AWS%20WAF-red)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black)
 
-An enterprise-hardened, fully serverless static web application and transactional REST API natively provisioned on AWS using Terraform. 
+
+> An enterprise-hardened, fully serverless static web application and transactional REST API natively provisioned on AWS using Terraform. 
 
 This project demonstrates a production-ready application framework engineered with a **zero-trust defense model**, an **automated SRE observability stack**, and aggressive **FinOps guardrails** to achieve sub-second global performance and a 100% predictable, scale-to-zero cost structure.
 
